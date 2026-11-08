@@ -37,15 +37,6 @@ Fejlesztéshez, ahol a kódváltozás azonnal megjelenik: `npm run app:dev` (deb
   Ilyenkor az app ugyanúgy mér és rögzít, mintha szenzor lenne csatlakoztatva.
 - **Nyelv:** *Beállítások → Nyelv* (magyar, angol, német). Alapból a telefon nyelvét követi.
 
-## Képernyőképek
-
-```bash
-npm run app:screenshot -- elo        # → screenshots/elo.png
-npm run app:screenshot               # → screenshots/ashi-<dátum>.png
-```
-
-A képek eszközfelbontásban (1080 × 2400) készülnek. A `screenshots/` mappa nincs verziókezelve.
-Az emulátor ablakában a kamera ikonnal is lehet képet készíteni.
 
 ## iOS
 
