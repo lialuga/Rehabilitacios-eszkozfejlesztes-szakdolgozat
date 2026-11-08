@@ -133,22 +133,65 @@ npm run esp32:compile                         # firmware fordítása
 
 ## Külső források és licencek
 
-A szokásos npm-, CocoaPods- és Gradle-függőségek a `package.json`, az `ios/Podfile.lock` és az
-`android/app/build.gradle` fájlokban szerepelnek, és megtartják a saját licencüket.
+A projektben minden más tárolóból származó kód, sablon és könyvtár itt van felsorolva. Az átvett
+részekben az eredeti kommentek változatlanul megmaradtak.
+
+### Átvett kód
 
 | Hol | Forrás | Licenc |
 |---|---|---|
 | `src/components/Icon.tsx`, `android/.../drawable/ic_stat_ashi.xml` | Feather Icons, <https://github.com/feathericons/feather> | MIT |
-| `src/components/Icon.tsx` (`footprints`) | Lucide, <https://lucide.dev/icons/footprints> | ISC |
+| `src/components/Icon.tsx` (`footprints`) | Lucide, <https://github.com/lucide-icons/lucide> | ISC |
 | `ios/vendor/LiquidGlassKit/` | LiquidGlassKit (DnV1eX), <https://github.com/DnV1eX/LiquidGlassKit> | az eredeti tárolóban nincs megadva |
 | `android/.../liquidglass/LiquidGlassViewManager.kt` (shader) | Kyant0/AndroidLiquidGlass, <https://github.com/Kyant0/AndroidLiquidGlass> | lásd az eredeti tárolót |
 | `src/ble/mockStream.ts` (`gaussian`) | Box–Muller-transzformáció: G. E. P. Box, M. E. Muller, *Ann. Math. Statist.* 29(2), 1958 | algoritmus |
 
-A firmware-ben `[S…]` jelöléssel hivatkozott források:
+### Projektsablonok
+
+Ezek a fájlok a keretrendszerek projektgenerátorából indultak; a sablon kommentjei bennük maradtak.
+
+| Hol | Forrás | Licenc |
+|---|---|---|
+| `index.js`, `metro.config.js`, `__tests__/App.test.tsx`, `Gemfile`, `.gitignore`, `android/` (Gradle-fájlok, `MainActivity.kt`, `MainApplication.kt`, `rn_edit_text_material.xml`), `ios/` (`Podfile`, `.xcode.env`, `AppDelegate.*`, `main.m`, `AshiTests.m`, Xcode-projekt) | React Native 0.73 projektsablon, <https://github.com/facebook/react-native> | MIT |
+| `android/gradlew`, `android/gradlew.bat`, `android/gradle/wrapper/` | Gradle Wrapper, <https://github.com/gradle/gradle> | Apache-2.0 |
+| `stepalign-backend/` alapváza (`eslint.config.mjs`, `test/`, `tsconfig*.json`, `nest-cli.json`) | NestJS alkalmazássablon, <https://github.com/nestjs/schematics> | MIT |
+| `stepalign-backend/prisma/schema.prisma` fejléce, `prisma.config.ts`, `prisma/migrations/` | Prisma (`prisma init`, `prisma migrate`), <https://github.com/prisma/prisma> | Apache-2.0 |
+
+### A firmware-ben `[S…]` jelöléssel hivatkozott források
 
 | | Forrás | Licenc |
 |---|---|---|
 | S2 | Electronic Cats MPU6050 1.4.4, <https://github.com/ElectronicCats/mpu6050> | MIT |
 | S3 | Arduino MadgwickAHRS 1.2.0, <https://github.com/arduino-libraries/MadgwickAHRS>; S. O. H. Madgwick, *An efficient orientation filter for inertial and inertial/magnetic sensor arrays*, 2010 | GPL (a könyvtár fejléce szerint) |
 | S5 | x-io Technologies Fusion, <https://github.com/xioTechnologies/Fusion> (csak az ötlet, kód nincs átvéve) | – |
-| S6, S8 | Espressif Arduino-ESP32 BLE példák (*Server*, *Notify*, *Server_secure_static_passkey*), <https://github.com/espressif/arduino-esp32> | LGPL-2.1 |
+| S6, S8 | Espressif Arduino-ESP32 3.3.x és BLE példái (*Server*, *Notify*, *Server_secure_static_passkey*), <https://github.com/espressif/arduino-esp32> | LGPL-2.1 |
+
+### Felhasznált könyvtárak
+
+Ezek függőségként települnek (`npm install`, `pod install`, Gradle), a kódjuk nincs a tárolóban.
+A fejlesztői eszközök (TypeScript, ESLint, Prettier, Jest, Babel) a `package.json` fájlok
+`devDependencies` részében szerepelnek.
+
+| Könyvtár | Verzió | Forrás | Licenc |
+|---|---|---|---|
+| React | 18.2.0 | <https://github.com/facebook/react> | MIT |
+| React Native | 0.73.8 | <https://github.com/facebook/react-native> | MIT |
+| react-native-ble-plx | 3.5.1 | <https://github.com/dotintent/react-native-ble-plx> | MIT |
+| @react-native-async-storage/async-storage | 1.23.1 | <https://github.com/react-native-async-storage/async-storage> | MIT |
+| react-native-base64 | 0.2.2 | <https://github.com/eranbo/react-native-base64> | MIT |
+| react-native-draggable-flatlist | 4.0.3 | <https://github.com/computerjazz/react-native-draggable-flatlist> | MIT |
+| react-native-gesture-handler | 2.14.0 | <https://github.com/software-mansion/react-native-gesture-handler> | MIT |
+| react-native-reanimated | 3.10.1 | <https://github.com/software-mansion/react-native-reanimated> | MIT |
+| react-native-linear-gradient | 2.8.3 | <https://github.com/react-native-linear-gradient/react-native-linear-gradient> | MIT |
+| react-native-svg | 13.14.0 | <https://github.com/software-mansion/react-native-svg> | MIT |
+| victory-native | 36.6.8 | <https://github.com/FormidableLabs/victory> | MIT |
+| zustand | 5.0.11 | <https://github.com/pmndrs/zustand> | MIT |
+| NestJS (`@nestjs/common`, `core`, `platform-express`) | 11.1.16 | <https://github.com/nestjs/nest> | MIT |
+| @nestjs/config | 4.0.3 | <https://github.com/nestjs/config> | MIT |
+| Prisma (`prisma`, `@prisma/client`, `@prisma/adapter-pg`) | 7.4.2 | <https://github.com/prisma/prisma> | Apache-2.0 |
+| node-postgres (`pg`) | 8.20.0 | <https://github.com/brianc/node-postgres> | MIT |
+| class-validator | 0.15.1 | <https://github.com/typestack/class-validator> | MIT |
+| class-transformer | 0.5.1 | <https://github.com/typestack/class-transformer> | MIT |
+| reflect-metadata | 0.2.2 | <https://github.com/rbuckton/reflect-metadata> | Apache-2.0 |
+| RxJS | 7.8.2 | <https://github.com/ReactiveX/rxjs> | Apache-2.0 |
+| MPU6050 (Electronic Cats), MadgwickAHRS, Arduino-ESP32 | lásd fent (S2, S3, S6) | | |
