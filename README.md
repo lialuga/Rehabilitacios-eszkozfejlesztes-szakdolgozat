@@ -1,200 +1,154 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Rehabilitációs eszköz: bokadőlés-mérő szenzor és mobilalkalmazás
 
-# ASHI - React Native + NestJS Full Stack Application
+A lábra rögzített szenzor méri a boka befelé és kifelé dőlését, és rezgéssel jelez, ha a dőlés
+átlépi a beállított küszöböt. A mobilalkalmazás élőben mutatja a szöget, rögzíti a méréseket, és
+ha be van kapcsolva, feltölti őket a háttérszolgáltatásra.
 
-A BLE szenzor monitorozó alkalmazás valós idejű adatmegjelenítéssel.
+| Rész | Mappa | Technológia |
+|---|---|---|
+| Mobilalkalmazás (iOS, Android) | `App.tsx`, `src/` | React Native 0.73, TypeScript |
+| Szenzor firmware | `firmware/ashi_esp32/` | ESP32-S3, MPU6050, Arduino |
+| Háttérszolgáltatás | `stepalign-backend/` | NestJS, Prisma, PostgreSQL |
 
-**▶️ Indítás egy paranccsal**: [INDITAS.md](INDITAS.md) | **📦 Átadás (1.0.0)**: [ATADAS.md](ATADAS.md) | **⚡ Gyors Start**: [QUICK_START.md](QUICK_START.md) | **📖 Teljes Info**: [PROJECT_STATUS.md](PROJECT_STATUS.md)
+## Előfeltételek
 
----
-
-## Getting Started
-
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
-
-⚠️ **IMPORTANTES**: Olvasd el: [DATABASE_SETUP.md](DATABASE_SETUP.md) & [iOS_BUILD.md](iOS_BUILD.md)
-
-## Step 1: Frontend - Start the Metro Server
-
-## Ashi Full Stack Quick Start (DB + Backend + Mobile)
-
-Use this order when you want the complete stack running locally.
-
-1. Start PostgreSQL and ensure the `stepalign` database exists.
-2. Set backend connection in `stepalign-backend/.env`:
-
-```bash
-DATABASE_URL="postgresql://postgres:password@localhost:5432/stepalign"
-```
-
-3. Install dependencies:
+| Mi | Mihez kell |
+|---|---|
+| Node.js 18+ | minden részhez |
+| JDK 17 és Android Studio, benne egy virtuális eszközzel (*Device Manager → Create device*) | Android |
+| Xcode és CocoaPods | iOS |
+| PostgreSQL | háttérszolgáltatás |
+| Arduino IDE 2 (vagy `arduino-cli`), ESP32 board-csomag 3.3.x, *MPU6050* (Electronic Cats) és *Madgwick* (Arduino) könyvtár | firmware |
 
 ```bash
 npm install
-npm --prefix stepalign-backend install
 ```
 
-4. Run Prisma migration:
+## Az alkalmazás elindítása (Android emulátor)
 
 ```bash
-npx prisma migrate deploy --schema stepalign-backend/prisma/schema.prisma
+npm run app
 ```
 
-5. Start backend (default port: `3000`):
+A parancs elindítja az első Android virtuális eszközt (másikat így választhatsz:
+`AVD=Pixel_8 npm run app`), lefordítja a release buildet, telepíti és megnyitja az alkalmazást.
+Az első fordítás néhány percig tart. Ha a kód nem változott: `npm run app -- --no-build`.
+Fejlesztéshez, azonnal frissülő kóddal: `npm run app:dev`.
+
+Ha az Android SDK nem a `~/Library/Android/sdk` mappában van, állítsd be az `ANDROID_HOME` változót.
+
+- **Szenzor nélkül:** a főképernyőn a *Kipróbálás demó adatokkal* gomb, vagy *Beállítások → Demó mód*.
+  Az alkalmazás ilyenkor szimulált adatokkal ugyanúgy mér és rögzít.
+- **Nyelv:** *Beállítások → Nyelv* (magyar, angol, német); alapból a telefon nyelvét követi.
+- **Képernyőkép:** `npm run app:screenshot -- elo` → `screenshots/elo.png`.
+
+## iOS
 
 ```bash
-npm run backend:start
+bundle install
+cd ios && bundle exec pod install && cd ..
+npm start          # Metro, külön terminálban
+npm run ios        # szimulátor
 ```
 
-6. Start Metro in another terminal (default port: `8081`):
+Valódi iPhone-ra: `open ios/Ashi.xcworkspace`, majd az Xcode-ban a *Signing & Capabilities → Team*
+mezőben a saját Apple ID, és *Run*.
+
+## Háttérszolgáltatás (felhőszinkron)
 
 ```bash
-npm start
+brew install postgresql@15 && brew services start postgresql@15
+psql -U postgres -c "CREATE DATABASE stepalign;"
+
+cd stepalign-backend
+npm install
+cp .env.example .env          # a DATABASE_URL-be a saját felhasználónév és jelszó
+npx prisma migrate deploy
+npx prisma generate
+npm run build
+npm run start:prod            # http://0.0.0.0:3000
 ```
 
-7. (Optional, for physical phone testing) expose Metro with auto tunnel selection:
+Ellenőrzés: `curl http://localhost:3000/health` → `{"status":"ok","db":true}`.
+Fejlesztéshez `npm run start:dev`; a repo gyökeréből `npm run backend:start`.
+
+**A telefon csatlakoztatása:** a gép és a telefon legyen ugyanazon a Wi-Fin. A gép címe:
+`ipconfig getifaddr en0`. Az alkalmazásban *Beállítások → Felhő szinkron → Mérések feltöltése*,
+szerver: `<ip-cím>:3000`. Android release buildben a titkosítatlan HTTP tiltott, ezért ott debug
+build (`npm run app:dev`) vagy HTTPS-es szerver kell.
+
+| Metódus | Útvonal | Leírás |
+|---|---|---|
+| `GET` | `/health` | az API és az adatbázis állapota |
+| `POST` | `/session` | mérés mentése; ugyanaz a `(userId, clientId)` frissíti a sort |
+| `GET` | `/session/:userId` | a felhasználó mérései, legújabb elöl |
+| `DELETE` | `/session/:userId/:clientId` | mérés törlése |
+
+## Szenzor firmware
+
+**Bekötés:** MPU6050 VCC → 3V3, GND → GND, SDA → GPIO 18, SCL → GPIO 17. A rezgőmotor
+tranzisztoron vagy MOSFET-en keresztül a GPIO 10-ről kap jelet, párhuzamosan egy szabadonfutó
+diódával.
 
 ```bash
-npm run dev:tunnel
+npm run esp32:flash        # fordítás és feltöltés, a portot magától megkeresi
+npm run esp32:monitor      # soros monitor, 115200 baud
 ```
 
-This prints a public URL your phone can open on the same network or mobile data.
-- Provider order in `auto` mode:
-   1. `ngrok` (if auth token is configured)
-   2. `localhost.run` (`https://...lhr.life` style URL)
-   3. `localtunnel` (`https://...loca.lt`, may ask password)
+Ha nem találja a portot: tartsd nyomva a **BOOT** gombot, nyomd meg az **RST**-t, engedd el a
+BOOT-ot, és futtasd újra. Kézzel: `PORT=/dev/cu.usbmodem1101 npm run esp32:flash`.
 
-Force a specific provider if needed:
+Arduino IDE-ből: *ESP32S3 Dev Module*, USB CDC On Boot: *Enabled*, Flash Size: *16MB*,
+Partition Scheme: *16M Flash (3MB APP/9.9MB FATFS)*, PSRAM: *OPI PSRAM*.
+
+Indításkor 2–3 másodpercig tartsd mozdulatlanul a szenzort (a giroszkóp kalibrálása). A soros
+monitoron ekkor `[BLE] advertising as Ashi-Sensor` jelenik meg.
+
+**Csatlakozás az alkalmazásból:**
+1. *Élő → Szenzor csatlakoztatása*.
+2. A telefon PIN-kódot kér: alapból `246810` (a `.ino` elején: `BLE_PIN`). Ez csak egyszer kell.
+3. *Beállítások → Eszköz → Nullpont kalibrálása*, egyenesen állva.
+4. Befelé döntéskor a szögmérő jobbra tér ki. Ha balra: *Beállítások → Eszköz → Dőlésirány
+   megfordítása*; ha csak előre-hátra billentésre mozdul: *Szenzor 90°-kal elforgatva*.
+
+| Rezgésjelzés | Minta |
+|---|---|
+| befelé, a küszöb felett | 0,5 s be / 0,5 s ki |
+| befelé, küszöb + 7° felett | 0,2 s be / 0,2 s ki |
+| befelé, küszöb + 15° felett | folyamatos |
+| kifelé (elesésveszély), a küszöb felett | dupla rövid rezgés |
+| kifelé, küszöb + 10° felett | folyamatos |
+
+Alapértékek: befelé 8°, kifelé 10°; mindkettő állítható az alkalmazásban (*Beállítások → Mérés*).
+
+## Tesztek
 
 ```bash
-TUNNEL_PROVIDER=localhostrun npm run dev:tunnel
-# or
-TUNNEL_PROVIDER=localtunnel npm run dev:tunnel
-
-# or using dedicated scripts
-npm run dev:tunnel:localhostrun
-npm run dev:tunnel:localtunnel
+npm test                                      # alkalmazás
+npx tsc --noEmit && npm run lint
+npm --prefix stepalign-backend test           # háttérszolgáltatás
+npm --prefix stepalign-backend run test:e2e   # a DATABASE_URL adatbázison
+npm run esp32:compile                         # firmware fordítása
 ```
 
-Quick check URL example:
+## Külső források és licencek
 
-```bash
-https://your-tunnel-domain/index.bundle?platform=android&dev=true&minify=false
-```
+A szokásos npm-, CocoaPods- és Gradle-függőségek a `package.json`, az `ios/Podfile.lock` és az
+`android/app/build.gradle` fájlokban szerepelnek, és megtartják a saját licencüket.
 
-8. Launch the app in a third terminal:
+| Hol | Forrás | Licenc |
+|---|---|---|
+| `src/components/Icon.tsx`, `android/.../drawable/ic_stat_ashi.xml` | Feather Icons, <https://github.com/feathericons/feather> | MIT |
+| `src/components/Icon.tsx` (`footprints`) | Lucide, <https://lucide.dev/icons/footprints> | ISC |
+| `ios/vendor/LiquidGlassKit/` | LiquidGlassKit (DnV1eX), <https://github.com/DnV1eX/LiquidGlassKit> | az eredeti tárolóban nincs megadva |
+| `android/.../liquidglass/LiquidGlassViewManager.kt` (shader) | Kyant0/AndroidLiquidGlass, <https://github.com/Kyant0/AndroidLiquidGlass> | lásd az eredeti tárolót |
+| `src/ble/mockStream.ts` (`gaussian`) | Box–Muller-transzformáció: G. E. P. Box, M. E. Muller, *Ann. Math. Statist.* 29(2), 1958 | algoritmus |
 
-```bash
-npm run android
-# or
-npm run ios
-```
+A firmware-ben `[S…]` jelöléssel hivatkozott források:
 
-## Mobile demo without Metro tunnel
-
-If you want to show the app on another Android phone during development, the most stable path is sharing an APK (no Metro needed).
-
-1. Build APK:
-
-```bash
-npm run android:demo:build
-```
-
-2. Start a public install link:
-
-```bash
-npm run android:demo:share
-```
-
-Default `android:demo:share` mode uses local Wi-Fi link (`http://<your-ip>:8090/app-release.apk`) which is the most stable during development.
-
-If you need internet/public sharing, use:
-
-```bash
-npm run android:demo:share:tunnel
-```
-
-The script writes the latest active link to `/tmp/ashi_apk_share.current`.
-Keep that terminal running while others download/install, otherwise the public link stops working.
-
-Shortcut on macOS (opens backend and Metro in separate Terminal windows):
-
-```bash
-npm run dev:all
-```
-
-If `DATABASE_URL` is missing, `dev:all` will skip backend and still start Metro + tunnel.
-
-If `8081` is already in use, another Metro/dev server is running.
-
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
-
-To start Metro, run the following command from the _root_ of your React Native project:
-
-```bash
-# using npm
-npm start
-
-# OR using Yarn
-yarn start
-```
-
-## Step 2: Start your Application
-
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
-
-### For Android
-
-```bash
-# using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
-
-### For iOS
-
-```bash
-# using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
-
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
-
-## Step 3: Modifying your App
-
-Now that you have successfully run the app, let's modify it.
-
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
-
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+| | Forrás | Licenc |
+|---|---|---|
+| S2 | Electronic Cats MPU6050 1.4.4, <https://github.com/ElectronicCats/mpu6050> | MIT |
+| S3 | Arduino MadgwickAHRS 1.2.0, <https://github.com/arduino-libraries/MadgwickAHRS>; S. O. H. Madgwick, *An efficient orientation filter for inertial and inertial/magnetic sensor arrays*, 2010 | GPL (a könyvtár fejléce szerint) |
+| S5 | x-io Technologies Fusion, <https://github.com/xioTechnologies/Fusion> (csak az ötlet, kód nincs átvéve) | – |
+| S6, S8 | Espressif Arduino-ESP32 BLE példák (*Server*, *Notify*, *Server_secure_static_passkey*), <https://github.com/espressif/arduino-esp32> | LGPL-2.1 |
