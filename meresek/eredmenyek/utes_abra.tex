@@ -1,0 +1,14 @@
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.9\textwidth, height=5.5cm, xlabel={idő az ütéstől [s]}, ylabel={eltérés [$^\circ$]},
+      grid=major, grid style={gray!25}, legend pos=north east, legend cell align=left,
+      every axis plot/.append style={thick}, /pgf/number format/use comma]
+      \addplot+[no marks] table[x=t, y=uj, col sep=comma] {meresek/utes_pelda.csv}; \addlegendentry{jelenlegi lánc}
+      \addplot+[no marks, dashed] table[x=t, y=regi, col sep=comma] {meresek/utes_pelda.csv}; \addlegendentry{kiinduló lánc}
+      \addplot+[no marks, gray, thin] table[x=t, y=gyorsulas, col sep=comma] {meresek/utes_pelda.csv}; \addlegendentry{csak gyorsulásmérő}
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Egy ütés hatása a dőlésszögre: a nyugalmi értéktől való eltérés}
+  \label{fig:utes}
+\end{figure}

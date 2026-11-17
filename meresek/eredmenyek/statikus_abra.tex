@@ -1,0 +1,13 @@
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.9\textwidth, height=5.5cm, xlabel={referenciaszög [$^\circ$]}, ylabel={hiba [$^\circ$]},
+      grid=major, grid style={gray!25}, legend pos=north east, legend cell align=left,
+      every axis plot/.append style={thick}, /pgf/number format/use comma]
+      \addplot+[only marks, error bars/.cd, y dir=both, y explicit] table[x=ref, y=hiba, y error=ismetelhetoseg, col sep=comma] {meresek/statikus_szogek.csv};
+      \addplot[gray, dashed, domain=-25:25] {0};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{A statikus szöghiba a referenciaszög függvényében (hibasáv: az ismétlések szórása)}
+  \label{fig:statikus}
+\end{figure}

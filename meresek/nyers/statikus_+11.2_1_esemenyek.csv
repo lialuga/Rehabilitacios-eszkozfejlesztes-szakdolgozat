@@ -1,0 +1,5 @@
+t,esemeny,adat
+-1.009,config,8;10;1;150;0.5;1;0x68;114
+-1.009,cmd,L1
+2.626,imu,lost
+6.816,imu,recovered;22
